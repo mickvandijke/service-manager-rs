@@ -125,35 +125,36 @@ impl ServiceManager for LaunchdServiceManager {
             ),
         };
 
+        // Unload old service first if it exists
+        if plist_path.exists() {
+            let _ = wrap_output(launchctl("unload", plist_path.to_string_lossy().as_ref())?);
+        }
+
         utils::write_file(
             plist_path.as_path(),
             plist.as_bytes(),
             PLIST_FILE_PERMISSIONS,
         )?;
 
-        if ctx.autostart {
-            wrap_output(launchctl("load", plist_path.to_string_lossy().as_ref())?)?;
-        }
+        // Load the service
+        wrap_output(launchctl("load", plist_path.to_string_lossy().as_ref())?)?;
 
         Ok(())
     }
 
     fn uninstall(&self, ctx: ServiceUninstallCtx) -> io::Result<()> {
         let plist_path = self.get_plist_path(ctx.label.to_qualified_name());
-
         wrap_output(launchctl("unload", plist_path.to_string_lossy().as_ref())?)?;
         std::fs::remove_file(plist_path)
     }
 
     fn start(&self, ctx: ServiceStartCtx) -> io::Result<()> {
-        let plist_path = self.get_plist_path(ctx.label.to_qualified_name());
-        wrap_output(launchctl("load", plist_path.to_string_lossy().as_ref())?)?;
+        wrap_output(launchctl("start", ctx.label.to_qualified_name().as_str())?)?;
         Ok(())
     }
 
     fn stop(&self, ctx: ServiceStopCtx) -> io::Result<()> {
-        let plist_path = self.get_plist_path(ctx.label.to_qualified_name());
-        wrap_output(launchctl("unload", plist_path.to_string_lossy().as_ref())?)?;
+        wrap_output(launchctl("stop", ctx.label.to_qualified_name().as_str())?)?;
         Ok(())
     }
 
